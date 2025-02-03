@@ -9,12 +9,13 @@ import Picker from '@emoji-mart/react';
 import { getChatName } from '../utils/logics';
 import Typing from '../components/ui/Typing';
 import { validUser } from '../apis/auth';
-import { AiOutlineCamera, AiOutlineClose } from 'react-icons/ai';
+import { AiOutlineCamera, AiOutlineCloseCircle } from 'react-icons/ai';
 import io from "socket.io-client";
 import './home.css';
 import MessageHistory from '../components/MessageHistory';
 import Model from '../components/Model';
-import axios from 'axios';  
+import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const ENDPOINT = process.env.REACT_APP_SERVER_URL;
 let socket, selectedChatCompare;
@@ -29,56 +30,72 @@ function Chat(props) {
   const [isTyping, setIsTyping] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
-  const [image, setImage] = useState(null); 
-  const [imagePreview, setImagePreview] = useState(null);
+  const [file, setFile] = useState(null);
+  const [filePreview, setFilePreview] = useState(null);
   const activeUser = useSelector((state) => state.activeUser);
 
-  const handleImageChange = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      setImage(file);
-      setImagePreview(URL.createObjectURL(file)); 
+  const handleFileChange = (event) => {
+    const selectedFile = event.target.files[0];
+    if (!selectedFile) return;
+
+    setFile(selectedFile);
+    const fileType = selectedFile.type.split("/")[0];
+
+    if (fileType === "image") {
+      setFilePreview(URL.createObjectURL(selectedFile));
+    } else if (fileType === "video") {
+      setFilePreview(URL.createObjectURL(selectedFile));
+    } else {
+      setFilePreview(selectedFile.name); // For other files, just display the name
     }
   };
 
-  const handleImageRemove = () => {
-    setImage(null); 
-    setImagePreview(null); 
+  const handleFileRemove = () => {
+    setFile(null);
+    setFilePreview(null);
+    document.getElementById('file-upload').value = '';
   };
 
-  const handleImageUpload = async () => {
-    if (!image) {
-      console.error('No image selected');
+  const handleFileUpload = async () => {
+    if (!file) {
+      console.error('No file selected');
       return;
     }
-  
+
     const formData = new FormData();
-    formData.append('file', image);
-  
+    formData.append('file', file);
+
     try {
-      // Step 1: Upload the image to Cloudinary
-      const uploadResponse = await axios.post('/api/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      const uploadResponse = await axios.post(
+        `${process.env.REACT_APP_SERVER_URL}/api/upload`, 
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
+
+      const fileUrl = uploadResponse.data.fileUrl;
+      const fileType = file.type.split("/")[0];
+
+      const messageData = await sendMessage({
+        chatId: activeChat._id,
+        message: '',
+        file: fileUrl,
+        fileType: fileType,
       });
-  
-      const imageUrl = uploadResponse.data.fileUrl; // Cloudinary URL
-  
-      // Step 2: Send the message with the image URL
-      const messageData = await sendMessage({ chatId: activeChat._id, message: '', image: imageUrl });
+
       socket.emit('new message', messageData);
       setMessages([...messages, messageData]);
-  
-      // Clear the image state
-      setImage(null);
-      setImagePreview(null);
+
+      handleFileRemove();
     } catch (error) {
-      console.error('Error uploading image:', error);
+      console.error('Error uploading file:', error);
+      toast.error('Failed to upload file. Please try again.');
     }
   };
+
   const keyDownFunction = async (e) => {
-    if ((e.key === 'Enter' || e.type === 'click') && (message || image)) {
-      if (image) {
-        await handleImageUpload(); // Upload image first
+    if ((e.key === 'Enter' || e.type === 'click') && (message || file)) {
+      if (file) {
+        await handleFileUpload();
       } else {
         const data = await sendMessage({ chatId: activeChat._id, message });
         socket.emit('new message', data);
@@ -89,6 +106,7 @@ function Chat(props) {
       dispatch(fetchChats());
     }
   };
+
 
   useEffect(() => {
     socket = io(ENDPOINT);
@@ -161,21 +179,28 @@ function Chat(props) {
           <div className="scrollbar-hide w-[100%] h-[70vh] md:h-[66vh] lg:h-[69vh] flex flex-col overflow-y-scroll p-4">
             <MessageHistory typing={isTyping} messages={messages} />
             {/* Image Preview Container - Aligned to the Right */}
+            {/* File Preview */}
             <div className="flex justify-end">
-              {imagePreview && (
+              {filePreview && (
                 <div className="relative mt-2">
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    className="w-[100px] h-[100px] object-cover rounded-lg"
-                  />
-                  <AiOutlineClose
-                    className="absolute top-[-10px] right-[-10px] text-white cursor-pointer bg-red-500 rounded-full p-1"
-                    onClick={handleImageRemove}
-                  />
+                  {file.type.startsWith("image") ? (
+                    <img src={filePreview} alt="Preview" className="w-24 h-24 object-cover rounded-lg" />
+                  ) : file.type.startsWith("video") ? (
+                    <video controls className="w-24 h-24 rounded-lg">
+                      <source src={filePreview} type={file.type} />
+                      Your browser does not support the video tag.
+                    </video>
+                  ) : (
+                    <a href={filePreview} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">
+                      {file.name}
+                    </a>
+                  )}
+                  <AiOutlineCloseCircle className="absolute top-[-10px] right-[-10px] text-red-500 cursor-pointer bg-white rounded-full p-1" onClick={handleFileRemove} />
                 </div>
               )}
             </div>
+
+
             <div className="ml-7 -mb-10">
               {isTyping ? <Typing width="100" height="100" /> : ""}
             </div>
@@ -222,12 +247,12 @@ function Chat(props) {
                 </div>
                 <input
                   type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
+                  accept="image/*, video/*, .pdf, .docx, .xlsx"
+                  onChange={handleFileChange}
                   style={{ display: 'none' }}
-                  id="image-upload"
+                  id="file-upload"
                 />
-                <label htmlFor="image-upload">
+                <label htmlFor="file-upload">
                   <AiOutlineCamera className="cursor-pointer text-[#aabac8] text-[20px]" />
                 </label>
                 <button onClick={(e) => keyDownFunction(e)} className="bg-[#f8f9fa] border-[2px] border-[#d4d4d4] text-[14px] px-2 py-[3px] text-[#9e9e9e] font-medium rounded-[7px] -mt-1">

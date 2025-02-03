@@ -3,6 +3,7 @@ import user from '../models/userModel.js';
 import Chat from '../models/chatModel.js';
 import fs from 'fs';
 
+
 export const sendMessage = async (req, res) => {
   const { chatId, message, image } = req.body; // Accepts image in request
 
@@ -21,7 +22,7 @@ export const sendMessage = async (req, res) => {
 
     let msgData = { sender: req.rootUserId, chatId };
     if (message) msgData.message = message;
-    if (imageString) msgData.image = imageString; // Store Base64 string in MongoDB
+    if (image) msgData.image = image; // Store Base64 string in MongoDB
 
     let msg = await Message.create(msgData);
 

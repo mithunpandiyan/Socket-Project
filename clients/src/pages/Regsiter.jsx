@@ -7,6 +7,7 @@ import { googleAuth, registerUser } from '../apis/auth'
 import { useState } from 'react'
 import { BsEmojiLaughing, BsEmojiExpressionless } from "react-icons/bs"
 import { toast } from 'react-toastify';
+
 import { validUser } from '../apis/auth'
 const defaultData = {
   firstname: "",
@@ -96,10 +97,6 @@ function Regsiter() {
           <div className='relative flex flex-col gap-y-3'>
             <input onChange={handleOnChange} className='bg-[#222222] h-[50px] pl-3 text-[#ffff] w-[100%] sm:w-[96.3%]' type={showPass ? "text" : "password"} name="password" placeholder="Password" value={formData.password} required />
 
-
-            {/* <button onCli type="button">
-              <BsEmojiExpressionless className='text-[#fff] absolute top-3 right-6 w-[30px] h-[25px]' />
-            </button> */}
             {
               !showPass ? <button type='button'><BsEmojiLaughing onClick={() => setShowPass(!showPass)} className='text-[#fff] absolute top-3 right-4 sm:right-6 w-[30px] h-[25px]' /></button> : <button type='button'> <BsEmojiExpressionless onClick={() => setShowPass(!showPass)} className='text-[#fff] absolute top-3 right-4 sm:right-6 w-[30px] h-[25px]' /></button>
             }
@@ -111,9 +108,8 @@ function Regsiter() {
 
               <lottie-player src="https://assets2.lottiefiles.com/packages/lf20_h9kds1my.json" background="transparent" speed="1" style={{ width: "200px", height: "160px" }} loop autoplay></lottie-player>
             </div>
-            <p style={{ display: isLoading ? "none" : "block" }} className='test-[#fff]'>Regsiter</p>
+            <p style={{ display: isLoading ? "none" : "block" }} className='test-[#fff]'>Register</p>
           </button>
-          <p className='text-[#fff] text-center sm:-ml-8'>/</p>
           <GoogleLogin
             clientId={process.env.REACT_APP_CLIENT_ID}
             render={(renderProps) => (

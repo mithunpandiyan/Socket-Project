@@ -1,38 +1,54 @@
 import React, { useState } from 'react'
 import { IoArrowBack } from "react-icons/io5"
+import { IoMdLogOut } from "react-icons/io"
+import { IoCamera } from "react-icons/io5"  
 import { useDispatch, useSelector } from 'react-redux'
 import { setShowProfile } from '../redux/profileSlice'
-import { IoMdLogOut } from "react-icons/io"
 import InputEdit from './profile/InputEdit'
 import { updateUser } from '../apis/auth'
 import { toast } from 'react-toastify'
 import { setUserNameAndBio } from '../redux/activeUserSlice'
+
 function Profile(props) {
   const dispatch = useDispatch()
   const { showProfile } = useSelector((state) => state.profile)
   const activeUser = useSelector((state) => state.activeUser)
   const [formData, setFormData] = useState({
     name: activeUser.name,
-    bio: activeUser.bio
+    bio: activeUser.bio,
+    profilePic: activeUser.profilePic, 
   })
+  const [selectedImage, setSelectedImage] = useState(null)  
+
   const logoutUser = () => {
     toast.success("Logout Successfull!")
     localStorage.removeItem("userToken")
     window.location.href = "/login"
   }
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
-  const submit = async () => {
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setSelectedImage(reader.result) 
+        setFormData({ ...formData, profilePic: reader.result }) 
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const submit = async () => {
     dispatch(setUserNameAndBio(formData))
     toast.success("Updated!")
-    await updateUser(activeUser.id, formData)
-
+    await updateUser(activeUser.id, formData) 
   }
 
   return (
-
     <div style={{ transition: showProfile ? "0.3s ease-in-out" : "" }} className={props.className}>
       <div className='absolute  w-[100%]'>
         <div className='bg-[#166e48] pt-12 pb-3'>
@@ -43,18 +59,27 @@ function Profile(props) {
         </div>
         <div className=' pt-5'>
           <div className='flex items-center flex-col'>
-            <img className='w-[150px] h-[150px] rounded-[100%] -ml-5' src={activeUser?.profilePic} alt="" />
+            <div className='relative'>
+              <img className='w-[150px] h-[150px] rounded-[100%] -ml-5' src={selectedImage || activeUser?.profilePic} alt="Profile" />
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="absolute bottom-0 right-0 w-0 h-0 opacity-0" 
+              />
+              <IoCamera
+                onClick={() => document.querySelector('input[type="file"]').click()} 
+                className="absolute bottom-0 right-0 text-white w-8 h-8 bg-[#166e48] p-2 rounded-full cursor-pointer"
+              />
+            </div>
           </div>
           <InputEdit type="name" handleChange={handleChange} input={formData.name} handleSubmit={submit} />
-
           <div>
-
             <div className='py-5 px-4'>
               <p className='text-[10px] tracking-wide text-[#3b4a54] '>
                 This is not your username or pin. This name will be visible to your contacts
               </p>
             </div>
-
           </div>
           <InputEdit type="bio" handleChange={handleChange} input={formData.bio} handleSubmit={submit} />
         </div>
